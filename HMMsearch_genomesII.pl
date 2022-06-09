@@ -4,18 +4,18 @@
 #revised to use newly downloaded GenBank complete genome data, jester, 2018/6/14
 
 use strict;
+use FindBin;
 
 #settings:
-my $hmmsearch='/usr/local/bin/hmmsearch'; #the program from HMMER3 package
-my $script_path='/your_path/eCIS-screen'; #location of all eCIS screen scripts
-
+my $hmmsearch=`which hmmsearch`; #'/usr/bin/hmmsearch'; #the program from HMMER3 package
+chomp($hmmsearch);
+my $script_path="$FindBin::Bin"; #'/your_path/eCIS-screen'; #location of all eCIS screen scripts
 my $gbk2IDs=$script_path.'/gbk2IDs.pl';
 my $gbk2seq=$script_path.'/gbk2seq.pl';
 my $hs2tab=$script_path.'/hmmsearch2tab.pl';
 my $filter=$script_path.'/filter_hmmtab.pl';
 my $summary=$script_path.'/parse_hmmtab4eCIS.pl';
-
--x $gbk2IDs and -x $gbk2seq and -x $hmmsearch and -x $hs2tab and -x $filter and -x $summary or die "error run $gbk2seq or $hs2tab or $filter or $hmmsearch";
+-x $gbk2IDs and -x $gbk2seq and -x $hmmsearch and -x $hs2tab and -x $filter and -x $summary or die "error run $gbk2IDs or $gbk2seq or $hs2tab or $filter or $summary or $hmmsearch";
 
 @ARGV==3 or die <<EOF;
 	<-- Pipeline for screening eCIS loci from bacterial genomes -->
@@ -59,7 +59,7 @@ foreach my $genome (@files)
 {
  my $id=$genome;
  $id=~s!$genomepath!!;
- $id=~s!^/?([\w\.]+)/.*!$1!;
+ $id=~s!^/?([\w\.-]+)/.*!$1!;
 #unzip file first
  my $outgbk="$id.gbk";
  die "Error: $outgbk already exists" if -e $outgbk;
@@ -85,18 +85,18 @@ foreach my $genome (@files)
  if(-e $outfaa) #already exists
  { warn "- OK. FASTA file already exists!\n";}
  else
- {!system("$gbk2seq $outgbk $replicon FAA > $outfaa") or die "$gbk2seq run with error";}
+ {!system("$gbk2seq $outgbk FAA") or die "$gbk2seq run with error";}
  if(-s $outfaa)
  {
-  !system("$hmmsearch -E 1e-5 -o $outhmm $query $outfaa") or die "$hmmsearch run with error";
-  system("$hs2tab $outhmm | $filter - > $outtxt"); #without check since it can be empty
+  !system("$hmmsearch -E 1e-5 -o \"$outhmm\" $query \"$outfaa\"") or die "$hmmsearch run with error";
+  system("$hs2tab \"$outhmm\" | $filter - > \"$outtxt\""); #without check since it can be empty
   if(-s $outtxt) #not empty
-  {push @allout, $outtxt;}
+  {push @allout, "\"$outtxt\"";}
   else
   {
    warn "- None HMM found, skipped!\n";
-#   unlink $outfaa,$outhmm,$outtxt;
-   unlink $outhmm,$outtxt; #revised to keep faa file for further use, 2018/07/26
+   unlink $outfaa,$outhmm,$outtxt;
+#   unlink $outhmm,$outtxt; #revised to keep faa file for further use, 2018/07/26
   }
  }
  else #no CDS, skipped
@@ -114,6 +114,7 @@ for(my $i=0;$i<=$#allout;$i+=10) #group to avoid long argument list
 my $last=$i+9<$#allout?$i+9:$#allout;
 my $input=sprintf join(' ',@allout[$i..$last]);
 my $cmd="$summary $input ".($i?"| grep -v '#Genome' >":'')."> $output";
+warn "$cmd\n";
 #!system($cmd) or die "error during run command: $cmd"; # the results might be null, can't check
 system($cmd);
 warn $last+1," ...\n" if ($last+1)%100==0 or $last==$#allout;
