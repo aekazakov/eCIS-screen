@@ -5,9 +5,8 @@
 
 use strict;
 use Bio::SeqIO;
-my $usage = "Usage $0 genbank_file <accession> <FFN(DNA)|FAA(protein)|PG(pseudogene)> [options]\nAvailable options:\n\t-s\tsimple model, i.e. synonym only\n";
+my $usage = "Usage $0 genbank_file <FFN(DNA)|FAA(protein)|PG(pseudogene)> [options]\nAvailable options:\n\t-s\tsimple model, i.e. synonym only\n";
 my $filename = shift || die $usage;
-my $acc= shift || die $usage;
 my $type = shift || die $usage;
 $type = uc $type;
 die $usage unless($type eq 'FFN' or $type eq 'FAA' or $type eq 'PG');
@@ -22,13 +21,16 @@ warn "OK, extract ",$type eq 'FAA' ? 'protein' : ($type eq 'FFN' ? 'gene' : 'pse
 my $in = new Bio::SeqIO(-file => $filename, -format => 'genbank');
 
 my %geneIDs=(); #check potential duplicate IDs
-while( $acc and my $seq = $in->next_seq ) {
-	next unless $acc eq $seq->accession;
-	$acc='';
+my $genomeid = substr $filename, 0, -4;
+while( my $seq = $in->next_seq ) {
 #revised for adopting the new policy of NCBI (i.e. no CDS for pseudogenes)
-  my @cds = $type eq 'PG' ? grep { $_->primary_tag eq 'gene' and exists $_->{'_gsf_tag_hash'}->{'pseudo'} } $seq->get_SeqFeatures() : grep { $_->primary_tag eq 'CDS' or ($_->primary_tag eq 'gene' and exists $_->{'_gsf_tag_hash'}->{'pseudo'}) } $seq->get_SeqFeatures();
-  my $cdsnum=@cds;
-  if($cdsnum)
+	my $acc = $seq->accession;
+	my $outfile_name = $genomeid.'_'.$acc.'.faa';
+	open(my $outfile, '>', $outfile_name);
+	my @cds = $type eq 'PG' ? grep { $_->primary_tag eq 'gene' and exists $_->{'_gsf_tag_hash'}->{'pseudo'} } $seq->get_SeqFeatures() : grep { $_->primary_tag eq 'CDS' or ($_->primary_tag eq 'gene' and exists $_->{'_gsf_tag_hash'}->{'pseudo'}) } $seq->get_SeqFeatures();
+	my $cdsnum=@cds;
+	
+	if($cdsnum)
 	{
 	print STDERR "Total $cdsnum ",$type eq 'PG' ? 'pseudogenes':'CDS'," found in ",$seq->display_id(),".\nStarting extract sequences now ...\n";
 	}
@@ -45,11 +47,13 @@ while( $acc and my $seq = $in->next_seq ) {
     my $featureseq = $cds->spliced_seq;
 	my $cdsseq=$featureseq->seq();
 	$cdsseq=~s/(\w{60})/$1\n/g;
-	print '>';
+	#print '>';
+	print $outfile '>';
 	if($simple)
 	  {
 		die "Error: no 'locus_tag' found for CDS at $cds->{'_location'}->{'_start'}\.\.$cds->{'_location'}->{'_end'}!\n" unless(exists $cds->{'_gsf_tag_hash'}->{'locus_tag'}->[0]);
-		print $cds->{'_gsf_tag_hash'}->{'locus_tag'}->[0],' ',exists $cds->{'_gsf_tag_hash'}->{'gene'}->[0]?$cds->{'_gsf_tag_hash'}->{'gene'}->[0]:'-';
+		#print $cds->{'_gsf_tag_hash'}->{'locus_tag'}->[0],' ',exists $cds->{'_gsf_tag_hash'}->{'gene'}->[0]?$cds->{'_gsf_tag_hash'}->{'gene'}->[0]:'-';
+		print $outfile $cds->{'_gsf_tag_hash'}->{'locus_tag'}->[0],' ',exists $cds->{'_gsf_tag_hash'}->{'gene'}->[0]?$cds->{'_gsf_tag_hash'}->{'gene'}->[0]:'-';
 	  }
 	  else
 	  {
@@ -73,9 +77,11 @@ while( $acc and my $seq = $in->next_seq ) {
 		}
 		die "Fatal error: no ID found" unless $id;
 		$geneIDs{$id}=$id;
-		print $id,'(',$cds->start,$cds->strand>0?'>':'<',$cds->end,') ', exists $cds->{'_gsf_tag_hash'}->{'product'}->[0]?$cds->{'_gsf_tag_hash'}->{'product'}->[0]:'-';
+		#print $id,'(',$cds->start,$cds->strand>0?'>':'<',$cds->end,') ', exists $cds->{'_gsf_tag_hash'}->{'product'}->[0]?$cds->{'_gsf_tag_hash'}->{'product'}->[0]:'-';
+		print $outfile $id,'(',$cds->start,$cds->strand>0?'>':'<',$cds->end,') ', exists $cds->{'_gsf_tag_hash'}->{'product'}->[0]?$cds->{'_gsf_tag_hash'}->{'product'}->[0]:'-';
 	  }
-	print "\n", $type eq 'FAA' ? $pro : $cdsseq,"\n";
+	#print "\n", $type eq 'FAA' ? $pro : $cdsseq,"\n";
+	print $outfile "\n", $type eq 'FAA' ? $pro : $cdsseq,"\n";
   }
 }
 print STDERR "Done.\n";
