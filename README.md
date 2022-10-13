@@ -9,7 +9,9 @@ All scripts of this pipeline were custom wrtten in `Perl` (5.10.1) with `bioperl
 Additional program required is `HMMER` (3.1b2) available from http://hmmer.org/download.html.
 
 ## Install
-The script `HMMsearch_genomesII.pl` is the master of the pipeline, you need to be manually edited it to fit your local system environment before it can work properly. The two settings are given in the top of the script, includeing the path to `hmmsearch` program ($hmmsearch) and the path of this pipeline ($script_path).
+Run setup.sh script to create a separate conda environment for the tool.
+
+The script `HMMsearch_genomesII.pl` is the master of the pipeline.
 After update the settings you may test the pipeline using the following command (run within the install directory):
 
     $ ./HMMsearch_genomesII.pl eCIS.hmm example_genomes screen_summary.txt

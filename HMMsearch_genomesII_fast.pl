@@ -4,29 +4,18 @@
 #revised to use newly downloaded GenBank complete genome data, jester, 2018/6/14
 
 use strict;
-use File::Basename qw();
+use FindBin;
+
 #settings:
-my $hmmsearch='hmmsearch'; #'/usr/local/bin/hmmsearch'; #the program from HMMER3 package
-my $hmmsearch_exit_code=system($hmmsearch.' -h');
-
-if($hmmsearch_exit_code!=0)
-{
-  print "Command $hmmsearch failed with an exit code of $hmmsearch_exit_code.\n";
-  exit($hmmsearch_exit_code >> 8);
-}
-else
-{
-  print "$hmmsearch found!\n";
-}
-
-my ($script_name, $script_path, $script_suffix) = File::Basename::fileparse($0);
+my $hmmsearch=`which hmmsearch`; #'/usr/bin/hmmsearch'; #the program from HMMER3 package
+chomp($hmmsearch);
+my $script_path="$FindBin::Bin"; #'/your_path/eCIS-screen'; #location of all eCIS screen scripts
 my $gbk2IDs=$script_path.'/gbk2IDs.pl';
-my $gbk2seq=$script_path.'/gbk2seq_all.pl';
+my $gbk2seq=$script_path.'/gbk2seq.pl';
 my $hs2tab=$script_path.'/hmmsearch2tab.pl';
 my $filter=$script_path.'/filter_hmmtab.pl';
 my $summary=$script_path.'/parse_hmmtab4eCIS.pl';
-
--x $gbk2IDs and -x $gbk2seq and -x $hs2tab and -x $filter and -x $summary or die "error run $gbk2seq or $hs2tab or $filter or $gbk2IDs or $summary";
+-x $gbk2IDs and -x $gbk2seq and -x $hmmsearch and -x $hs2tab and -x $filter and -x $summary or die "error run $gbk2IDs or $gbk2seq or $hs2tab or $filter or $summary or $hmmsearch";
 
 @ARGV==3 or die <<EOF;
 	<-- Pipeline for screening eCIS loci from bacterial genomes -->
